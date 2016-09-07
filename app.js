@@ -58,22 +58,21 @@ var Player = function(id){
 			self.y = 0;
 		if(self.y < 0)
 			self.y = 500;	
-		if(self.x < food.x+10 && self.x > food.x-10 &&
-			self.y < food.y+10 && self.y > food.y-10){
-			console.log(self.number +" has eat "  )
-		self.score++;
-		food = {
-			x: Math.floor(500 * Math.random()),
-			y: Math.floor(500 * Math.random())
-		};
-		for(var i in SOCKET_LIST){
-			var socket = SOCKET_LIST[i];
-			socket.emit('food',food);
-			socket.emit('you',self);
+		if(self.x < food.x+10 && self.x > food.x-10 && self.y < food.y+10 && self.y > food.y-10){
+			console.log(self.number +" has eat "  );
+			self.score++;
+			food = {
+				x: Math.floor(500 * Math.random()),
+				y: Math.floor(500 * Math.random())
+			};
+			for(var i in SOCKET_LIST){
+				var socket = SOCKET_LIST[i];
+				socket.emit('food',food);
+				socket.emit('youEat',self);
+			}
 		}
 	}
-}
-return self;
+	return self;
 }
 
 var io = require('socket.io')(serv,{});
@@ -84,8 +83,11 @@ io.sockets.on('connection', function(socket){
 	var player = Player(socket.id);
 	PLAYER_LIST[socket.id] = player;
 
+	socket.on('nameChange',function(val){
+		player.number = val;
+	});
 	socket.emit('you',player);
-
+	
 	for(var i in SOCKET_LIST){
 		var socket = SOCKET_LIST[i];
 		socket.emit('food',food);

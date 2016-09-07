@@ -1,6 +1,8 @@
 
 <canvas id="scoreCanvas" width="150" height="500" style="border:1px solid #ff0000;"></canvas>
 <canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+<label style="position:absolute; top:445px; left:10px" for="name">Name : </label>
+<input id="name" style="position:absolute; top:465px; left:10px ; width: 130px;" onchange="nameChange(this.value)">
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
 <script>
 	var ctx = document.getElementById("ctx").getContext("2d");
@@ -13,31 +15,30 @@
 	var socket = io();
 	socket.on('you',function(player){
 		localPlayer = player;
-	})
+		if(parseInt(localPlayer.number)) localPlayer.number = "Player " + localPlayer.number ;
+	});
+	socket.on('youEat',function(player){
+		if(localPlayer.id === player.id){
+			localPlayer = player;
+			if(parseInt(localPlayer.number)) localPlayer.number = "Player " + localPlayer.number ;
+		}
+	});
 	socket.on('newPositions',function(data){
 		data.sort(function(a,b) {
 			return b.score - a.score ;
 		});
-		ctx.clearRect(0,0,500,500);
+		ctx.fillStyle="#000000";
+		ctx.fillRect(0,0,500,500);
+		//Drawing the circle
+		ctx.beginPath();
+		ctx.fillStyle="#FFFFFF";
+		ctx.arc(localPlayer.x+5,localPlayer.y+5, 50, 0, Math.PI*2, false); 
+		ctx.closePath();
+		ctx.fill();
+
+		//Drawing Score Text
 		scoreCanvas.clearRect(0,0,500,500);
 		var y = 70;
-		for(var i = 0 ; i < data.length; i++){
-			console.log(data[i])
-			if(data[i].id == localPlayer.id)
-				ctx.fillStyle="#FF0000";
-			else
-				ctx.fillStyle="#000000";
-			ctx.fillText(data[i].number,data[i].x-1,data[i].y-1);
-			ctx.fillRect(data[i].x,data[i].y,10,10);
-			if(data[i].id == localPlayer.id)
-				scoreCanvas.fillStyle="#FF0000";
-			else
-				scoreCanvas.fillStyle="#000000";
-			scoreCanvas.fillText(i+1,5,y);
-			scoreCanvas.fillText(data[i].number,30,y);
-			scoreCanvas.fillText(+data[i].score,55,y);
-			y += 16;
-		}
 		scoreCanvas.fillStyle="#000000";
 		scoreCanvas.fillText("You are : "+localPlayer.number,5,15);
 		scoreCanvas.fillText("Your score is : "+localPlayer.score,5,30);
@@ -45,33 +46,70 @@
 		scoreCanvas.fillText("Score Board",5,50);
 		scoreCanvas.fillText("Nice yoo!!",5,490);
 		ctx.fillText("Eat the Green one !! ",5,15);
-		ctx.fillStyle="#00FF00";
-		ctx.fillRect(localFood.x,localFood.y,10,10);
+		
+		for(var i = 0 ; i < data.length; i++){
+			if(parseInt(data[i].number)) data[i].number = "Player " + data[i].number ;
+			//Drawing the Score
+			if(data[i].id == localPlayer.id){
+				scoreCanvas.fillStyle="#FF0000";
+				localPlayer = data[i];
+			}
+			else
+				scoreCanvas.fillStyle="#000000";
+			scoreCanvas.fillText(i+1,5,y);
+			scoreCanvas.fillText(data[i].number,30,y);
+			scoreCanvas.fillText(data[i].score,100,y);
+			y += 16;
+			//Drawing the player
+			if(data[i].id == localPlayer.id){
+				ctx.fillStyle="#FF0000";
+			}
+			else
+				ctx.fillStyle="#000000";
+			ctx.fillText(data[i].number,data[i].x-12,data[i].y-3);
+			ctx.fillRect(data[i].x,data[i].y,10,10);
+		}
+		// Drawing the Food 
+		if(near(localFood,localPlayer))
+			ctx.fillStyle="#00FF00";
+		else
+			ctx.fillStyle="#000000";
+		ctx.beginPath();
+		ctx.arc(localFood.x,localFood.y, 8, 0, Math.PI*2, false); 
+		ctx.closePath();
+		ctx.fill();
+		//ctx.fillRect(localFood.x,localFood.y,10,10);
 	});
 	socket.on('food',function(food){
 		localFood = food;
 	});
 
 	document.onkeydown = function(event){
-        if(event.keyCode === 68)    //d
+        if(event.keyCode === 68 || event.keyCode === 39)    //d
         	socket.emit('keyPress',{inputId:'right',state:true});
-        else if(event.keyCode === 83)   //s
+        else if(event.keyCode === 83 || event.keyCode === 40)   //s
         	socket.emit('keyPress',{inputId:'down',state:true});
-        else if(event.keyCode === 81) //a
+        else if(event.keyCode === 81 || event.keyCode === 37) //q
         	socket.emit('keyPress',{inputId:'left',state:true});
-        else if(event.keyCode === 90) // w
+        else if(event.keyCode === 90 || event.keyCode === 38) // z
         	socket.emit('keyPress',{inputId:'up',state:true});
-
     }
     document.onkeyup = function(event){
-        if(event.keyCode === 68)    //d
+        if(event.keyCode === 68 || event.keyCode === 39)    //d
         	socket.emit('keyPress',{inputId:'right',state:false});
-        else if(event.keyCode === 83)   //s
+        else if(event.keyCode === 83 || event.keyCode === 40)   //s
         	socket.emit('keyPress',{inputId:'down',state:false});
-        else if(event.keyCode === 81) //a
+        else if(event.keyCode === 81 || event.keyCode === 37) //q
         	socket.emit('keyPress',{inputId:'left',state:false});
-        else if(event.keyCode === 90) // w
+        else if(event.keyCode === 90 || event.keyCode === 38) // z
         	socket.emit('keyPress',{inputId:'up',state:false});
     }
-
+    var nameChange = function(val){
+    	socket.emit('nameChange',val);
+    }
+    var near = function(localFood,localPlayer){
+    	console.log("sqrt")
+    	console.log("sqrt "+Math.sqrt(Math.pow(localPlayer.x-localFood.x,2)+Math.pow(localPlayer.y-localFood.y,2)) )
+    	return Math.sqrt(Math.pow(localPlayer.x-localFood.x,2)+Math.pow(localPlayer.y-localFood.y,2)) < 50;
+    }
 </script>
